@@ -1,5 +1,7 @@
 package server
 
+//TODO:Connection to DB.
+
 import (
 	"context"
 	"fmt"
