@@ -1,7 +1,5 @@
 package server
 
-//TODO:Connection to DB.
-
 import (
 	"context"
 	"fmt"
@@ -25,8 +23,10 @@ type Server struct {
 
 	httpServer    *http.Server
 	dbClient      *client.Client
-	errors        chan error
 	mustBeStopped chan bool
+
+	httpErrors chan error
+	dbErrors   chan error
 }
 
 const (
@@ -70,7 +70,8 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		return nil, err
 	}
 
-	srv.errors = make(chan error, 8)
+	srv.httpErrors = make(chan error, 8)
+	srv.dbErrors = make(chan error, 8)
 
 	return srv, nil
 }
@@ -99,7 +100,8 @@ func (srv *Server) Start() (err error) {
 		return err
 	}
 
-	go srv.listenForErrors()
+	go srv.listenForHttpErrors()
+	go srv.listenForDbErrors()
 
 	return nil
 }
@@ -117,7 +119,8 @@ func (srv *Server) Stop() (err error) {
 		return err
 	}
 
-	close(srv.errors)
+	close(srv.httpErrors)
+	close(srv.dbErrors)
 
 	return nil
 }
@@ -126,18 +129,27 @@ func (srv *Server) startHttpServer() {
 	go func() {
 		listenError := srv.httpServer.ListenAndServeTLS(srv.settings.CertFile, srv.settings.KeyFile)
 		if (listenError != nil) && (listenError != http.ErrServerClosed) {
-			srv.errors <- listenError
+			srv.httpErrors <- listenError
 		}
 	}()
 }
 
-func (srv *Server) listenForErrors() {
-	for err := range srv.errors {
+func (srv *Server) listenForHttpErrors() {
+	for err := range srv.httpErrors {
 		log.Println("Server error: " + err.Error())
 		srv.mustBeStopped <- true
 	}
 
-	log.Println("Error listener has stopped.")
+	log.Println("HTTP error listener has stopped.")
+}
+
+func (srv *Server) listenForDbErrors() {
+	for err := range srv.dbErrors {
+		log.Println("DB error: " + err.Error())
+		//TODO
+	}
+
+	log.Println("DB error listener has stopped.")
 }
 
 func (srv *Server) getContentDisposition(uid string) string {
@@ -175,7 +187,7 @@ func (srv *Server) processError(
 
 	if de.IsServerError() {
 		rw.WriteHeader(http.StatusInternalServerError)
-		srv.errors <- err
+		srv.dbErrors <- err
 		return
 	}
 
