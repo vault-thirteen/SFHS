@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	ss "github.com/vault-thirteen/SFHS/server/settings"
@@ -25,12 +27,16 @@ type Server struct {
 	dbClient      *client.Client
 	mustBeStopped chan bool
 
-	httpErrors chan error
-	dbErrors   chan error
+	mustStop                   *atomic.Bool
+	subRoutines                *sync.WaitGroup
+	httpErrors                 chan error
+	dbErrors                   chan error
+	dbReconnectionIsInProgress *atomic.Bool
 }
 
 const (
-	HttpStatusCodeOnError = 0
+	HttpStatusCodeOnError       = 0
+	DbClientRestartSleepTimeSec = 15
 )
 
 func NewServer(stn *ss.Settings) (srv *Server, err error) {
@@ -70,8 +76,13 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		return nil, err
 	}
 
+	srv.mustStop = new(atomic.Bool)
+	srv.mustStop.Store(false)
+	srv.subRoutines = new(sync.WaitGroup)
 	srv.httpErrors = make(chan error, 8)
 	srv.dbErrors = make(chan error, 8)
+	srv.dbReconnectionIsInProgress = new(atomic.Bool)
+	srv.dbReconnectionIsInProgress.Store(false)
 
 	return srv, nil
 }
@@ -106,7 +117,9 @@ func (srv *Server) Start() (err error) {
 	return nil
 }
 
-func (srv *Server) Stop() (err error) {
+func (srv *Server) Stop(forcibly bool) (err error) {
+	srv.mustStop.Store(true)
+
 	ctx, cf := context.WithTimeout(context.Background(), time.Minute)
 	defer cf()
 	err = srv.httpServer.Shutdown(ctx)
@@ -114,13 +127,19 @@ func (srv *Server) Stop() (err error) {
 		return err
 	}
 
-	err = srv.dbClient.Stop()
-	if err != nil {
-		return err
+	if forcibly {
+		_ = srv.dbClient.Stop()
+	} else {
+		err = srv.dbClient.Stop()
+		if err != nil {
+			return err
+		}
 	}
 
 	close(srv.httpErrors)
 	close(srv.dbErrors)
+
+	srv.subRoutines.Wait()
 
 	return nil
 }
@@ -146,10 +165,41 @@ func (srv *Server) listenForHttpErrors() {
 func (srv *Server) listenForDbErrors() {
 	for err := range srv.dbErrors {
 		log.Println("DB error: " + err.Error())
-		//TODO
+
+		if !srv.dbReconnectionIsInProgress.Load() {
+			srv.dbReconnectionIsInProgress.Store(true)
+			srv.subRoutines.Add(1)
+			go srv.reconnectDb()
+		}
 	}
 
 	log.Println("DB error listener has stopped.")
+}
+
+func (srv *Server) reconnectDb() {
+	defer srv.subRoutines.Done()
+
+	for {
+		if srv.mustStop.Load() {
+			log.Println("DB re-connection has been aborted.")
+			break
+		}
+
+		log.Println("Re-connecting to the DB ...")
+		err := srv.dbClient.Restart(true)
+		if err == nil {
+			log.Println("Connection to DB has been established.")
+			srv.dbReconnectionIsInProgress.Store(false)
+			break
+		}
+
+		for i := 1; i <= DbClientRestartSleepTimeSec; i++ {
+			if srv.mustStop.Load() {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}
 }
 
 func (srv *Server) getContentDisposition(uid string) string {

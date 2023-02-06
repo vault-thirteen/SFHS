@@ -35,7 +35,7 @@ func main() {
 	<-*serverMustBeStopped
 
 	log.Println("Stopping the server ...")
-	err = srv.Stop()
+	err = srv.Stop(true)
 	mustBeNoError(err)
 	log.Println("Server was stopped.")
 	time.Sleep(time.Second)
