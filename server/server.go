@@ -20,10 +20,19 @@ type Server struct {
 	dbDsnA    string
 	dbDsnB    string
 
-	httpServer    *http.Server
-	dbClient      *client.Client
+	// HTTP server.
+	httpServer *http.Server
+
+	// DB client.
+	dbClient     *client.Client
+	dbClientLock *sync.Mutex
+
+	// Channel for an external controller. When a message comes from this
+	// channel, a controller must stop this server. The server does not stop
+	// itself.
 	mustBeStopped chan bool
 
+	// Internal control structures.
 	mustStop                   *atomic.Bool
 	subRoutines                *sync.WaitGroup
 	httpErrors                 chan error
@@ -47,6 +56,7 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		listenDsn:     fmt.Sprintf("%s:%d", stn.ServerHost, stn.ServerPort),
 		dbDsnA:        fmt.Sprintf("%s:%d", stn.DbHost, stn.DbPortA),
 		dbDsnB:        fmt.Sprintf("%s:%d", stn.DbHost, stn.DbPortB),
+		dbClientLock:  new(sync.Mutex),
 		mustBeStopped: make(chan bool, 2),
 	}
 

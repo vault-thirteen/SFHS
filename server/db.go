@@ -34,6 +34,9 @@ func (srv *Server) reconnectDb() {
 }
 
 func (srv *Server) getData(uid string) (data []byte, err error, de *common.Error) {
+	srv.dbClientLock.Lock()
+	defer srv.dbClientLock.Unlock()
+
 	data, err = srv.dbClient.ShowBinary(uid)
 	if err == nil {
 		return data, nil, nil
