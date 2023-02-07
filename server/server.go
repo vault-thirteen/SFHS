@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,8 +12,6 @@ import (
 	ss "github.com/vault-thirteen/SFHS/server/settings"
 	"github.com/vault-thirteen/SFRODB/client"
 	cs "github.com/vault-thirteen/SFRODB/client/settings"
-	"github.com/vault-thirteen/SFRODB/common"
-	hdr "github.com/vault-thirteen/header"
 )
 
 type Server struct {
@@ -164,7 +161,7 @@ func (srv *Server) listenForHttpErrors() {
 
 func (srv *Server) listenForDbErrors() {
 	for err := range srv.dbErrors {
-		log.Println("DB error: " + err.Error())
+		log.Println("DB error: " + err.Error()) //TODO:Debug.
 
 		if !srv.dbReconnectionIsInProgress.Load() {
 			srv.dbReconnectionIsInProgress.Store(true)
@@ -174,88 +171,4 @@ func (srv *Server) listenForDbErrors() {
 	}
 
 	log.Println("DB error listener has stopped.")
-}
-
-func (srv *Server) reconnectDb() {
-	defer srv.subRoutines.Done()
-
-	for {
-		if srv.mustStop.Load() {
-			log.Println("DB re-connection has been aborted.")
-			break
-		}
-
-		log.Println("Re-connecting to the DB ...")
-		err := srv.dbClient.Restart(true)
-		if err == nil {
-			log.Println("Connection to DB has been established.")
-			srv.dbReconnectionIsInProgress.Store(false)
-			break
-		}
-
-		for i := 1; i <= DbClientRestartSleepTimeSec; i++ {
-			if srv.mustStop.Load() {
-				break
-			}
-			time.Sleep(time.Second)
-		}
-	}
-}
-
-func (srv *Server) getContentDisposition(uid string) string {
-	return ss.ContentDispositionInline +
-		`; filename="` + filepath.Base(uid) + srv.settings.FileExtension + `""`
-}
-
-func (srv *Server) httpRouter(rw http.ResponseWriter, req *http.Request) {
-	uid := req.URL.Path[1:]
-
-	data, err, de := srv.getData(uid)
-	if err != nil {
-		srv.processError(rw, err, de)
-		return
-	}
-
-	srv.respondWithData(rw, data)
-}
-
-func (srv *Server) processError(
-	rw http.ResponseWriter,
-	err error, // This error is non-null.
-	de *common.Error,
-) {
-	if de == nil {
-		log.Println(err)
-		rw.WriteHeader(HttpStatusCodeOnError)
-		return
-	}
-
-	if de.IsClientError() {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if de.IsServerError() {
-		rw.WriteHeader(http.StatusInternalServerError)
-		srv.dbErrors <- err
-		return
-	}
-
-	log.Println(err)
-	rw.WriteHeader(HttpStatusCodeOnError)
-}
-
-func (srv *Server) respondWithData(
-	rw http.ResponseWriter,
-	//uid string,
-	data []byte,
-) {
-	rw.Header().Set(hdr.HttpHeaderContentType, srv.settings.MimeType)
-	//rw.Header().Set(hdr.HttpHeaderContentDisposition, srv.getContentDisposition(uid))
-	rw.WriteHeader(http.StatusOK)
-
-	_, err := rw.Write(data)
-	if err != nil {
-		log.Println(err)
-	}
 }
