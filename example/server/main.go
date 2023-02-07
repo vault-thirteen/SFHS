@@ -24,8 +24,11 @@ func main() {
 	var srv *server.Server
 	srv, err = server.NewServer(stn)
 	mustBeNoError(err)
-	err = srv.Start()
-	mustBeNoError(err)
+
+	cerr := srv.Start()
+	if cerr != nil {
+		log.Fatal(cerr)
+	}
 	fmt.Println("HTTP Server: " + srv.GetListenDsn())
 	fmt.Println("DB Client A: " + srv.GetDbDsnA())
 	fmt.Println("DB Client B: " + srv.GetDbDsnB())
@@ -35,8 +38,10 @@ func main() {
 	<-*serverMustBeStopped
 
 	log.Println("Stopping the server ...")
-	err = srv.Stop(true)
-	mustBeNoError(err)
+	cerr = srv.Stop(true)
+	if cerr != nil {
+		log.Println(cerr)
+	}
 	log.Println("Server was stopped.")
 	time.Sleep(time.Second)
 }

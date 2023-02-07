@@ -5,7 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vault-thirteen/SFRODB/common"
+	ce "github.com/vault-thirteen/SFRODB/common/error"
+	"github.com/vault-thirteen/SFRODB/common/helper"
 	"github.com/vault-thirteen/errorz"
 	"github.com/vault-thirteen/reader"
 )
@@ -79,7 +80,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	// Server Host & Port.
 	stn.ServerHost = strings.TrimSpace(string(buf[0]))
 
-	stn.ServerPort, err = common.ParseUint16(strings.TrimSpace(string(buf[1])))
+	stn.ServerPort, err = helper.ParseUint16(strings.TrimSpace(string(buf[1])))
 	if err != nil {
 		return stn, err
 	}
@@ -91,12 +92,12 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	// Database.
 	stn.DbHost = strings.TrimSpace(string(buf[4]))
 
-	stn.DbPortA, err = common.ParseUint16(strings.TrimSpace(string(buf[5])))
+	stn.DbPortA, err = helper.ParseUint16(strings.TrimSpace(string(buf[5])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.DbPortB, err = common.ParseUint16(strings.TrimSpace(string(buf[6])))
+	stn.DbPortB, err = helper.ParseUint16(strings.TrimSpace(string(buf[6])))
 	if err != nil {
 		return stn, err
 	}
@@ -109,15 +110,15 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 
 func (stn *Settings) Check() (err error) {
 	if len(stn.File) == 0 {
-		return errors.New(common.ErrFileIsNotSet)
+		return errors.New(ce.ErrFileIsNotSet)
 	}
 
 	if len(stn.ServerHost) == 0 {
-		return errors.New(common.ErrServerHostIsNotSet)
+		return errors.New(ce.ErrServerHostIsNotSet)
 	}
 
 	if stn.ServerPort == 0 {
-		return errors.New(common.ErrServerPortIsNotSet)
+		return errors.New(ce.ErrServerPortIsNotSet)
 	}
 
 	if len(stn.CertFile) == 0 {
@@ -129,15 +130,15 @@ func (stn *Settings) Check() (err error) {
 	}
 
 	if len(stn.DbHost) == 0 {
-		return errors.New(common.ErrClientHostIsNotSet)
+		return errors.New(ce.ErrClientHostIsNotSet)
 	}
 
 	if stn.DbPortA == 0 {
-		return errors.New(common.ErrClientPortIsNotSet)
+		return errors.New(ce.ErrClientPortIsNotSet)
 	}
 
 	if stn.DbPortB == 0 {
-		return errors.New(common.ErrClientPortIsNotSet)
+		return errors.New(ce.ErrClientPortIsNotSet)
 	}
 
 	if len(stn.FileExtension) == 0 {

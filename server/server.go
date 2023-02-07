@@ -12,6 +12,7 @@ import (
 	ss "github.com/vault-thirteen/SFHS/server/settings"
 	"github.com/vault-thirteen/SFRODB/client"
 	cs "github.com/vault-thirteen/SFRODB/client/settings"
+	ce "github.com/vault-thirteen/SFRODB/common/error"
 )
 
 type Server struct {
@@ -36,12 +37,11 @@ type Server struct {
 	mustStop                   *atomic.Bool
 	subRoutines                *sync.WaitGroup
 	httpErrors                 chan error
-	dbErrors                   chan error
+	dbErrors                   chan *ce.CommonError
 	dbReconnectionIsInProgress *atomic.Bool
 }
 
 const (
-	HttpStatusCodeOnError       = 0
 	DbClientRestartSleepTimeSec = 15
 )
 
@@ -87,7 +87,7 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 	srv.mustStop.Store(false)
 	srv.subRoutines = new(sync.WaitGroup)
 	srv.httpErrors = make(chan error, 8)
-	srv.dbErrors = make(chan error, 8)
+	srv.dbErrors = make(chan *ce.CommonError, 8)
 	srv.dbReconnectionIsInProgress = new(atomic.Bool)
 	srv.dbReconnectionIsInProgress.Store(false)
 
@@ -110,12 +110,12 @@ func (srv *Server) GetStopChannel() *chan bool {
 	return &srv.mustBeStopped
 }
 
-func (srv *Server) Start() (err error) {
+func (srv *Server) Start() (cerr *ce.CommonError) {
 	srv.startHttpServer()
 
-	err = srv.dbClient.Start()
-	if err != nil {
-		return err
+	cerr = srv.dbClient.Start()
+	if cerr != nil {
+		return cerr
 	}
 
 	go srv.listenForHttpErrors()
@@ -124,22 +124,22 @@ func (srv *Server) Start() (err error) {
 	return nil
 }
 
-func (srv *Server) Stop(forcibly bool) (err error) {
+func (srv *Server) Stop(forcibly bool) (cerr *ce.CommonError) {
 	srv.mustStop.Store(true)
 
 	ctx, cf := context.WithTimeout(context.Background(), time.Minute)
 	defer cf()
-	err = srv.httpServer.Shutdown(ctx)
+	err := srv.httpServer.Shutdown(ctx)
 	if err != nil {
-		return err
+		return ce.NewServerError(err.Error(), 0)
 	}
 
 	if forcibly {
 		_ = srv.dbClient.Stop()
 	} else {
-		err = srv.dbClient.Stop()
-		if err != nil {
-			return err
+		cerr = srv.dbClient.Stop()
+		if cerr != nil {
+			return cerr
 		}
 	}
 
@@ -170,8 +170,8 @@ func (srv *Server) listenForHttpErrors() {
 }
 
 func (srv *Server) listenForDbErrors() {
-	for err := range srv.dbErrors {
-		log.Println("DB error: " + err.Error()) //TODO:Debug.
+	for cerr := range srv.dbErrors {
+		log.Println("DB error: " + cerr.Error()) //TODO:Debug.
 
 		if !srv.dbReconnectionIsInProgress.Load() {
 			srv.dbReconnectionIsInProgress.Store(true)

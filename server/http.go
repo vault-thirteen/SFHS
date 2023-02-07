@@ -6,16 +6,16 @@ import (
 	"path/filepath"
 
 	ss "github.com/vault-thirteen/SFHS/server/settings"
-	"github.com/vault-thirteen/SFRODB/common"
+	ce "github.com/vault-thirteen/SFRODB/common/error"
 	hdr "github.com/vault-thirteen/header"
 )
 
 func (srv *Server) httpRouter(rw http.ResponseWriter, req *http.Request) {
 	uid := req.URL.Path[1:]
 
-	data, err, de := srv.getData(uid)
-	if err != nil {
-		srv.processError(rw, err, de)
+	data, cerr := srv.getData(uid)
+	if cerr != nil {
+		srv.processError(rw, cerr)
 		return
 	}
 
@@ -37,30 +37,20 @@ func (srv *Server) respondWithData(
 	}
 }
 
-func (srv *Server) processError(
-	rw http.ResponseWriter,
-	err error, // This error is non-null.
-	de *common.Error,
-) {
-	if de == nil {
-		log.Println(err)
-		rw.WriteHeader(HttpStatusCodeOnError)
-		return
-	}
-
-	if de.IsClientError() {
+func (srv *Server) processError(rw http.ResponseWriter, cerr *ce.CommonError) {
+	if cerr.IsClientError() {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if de.IsServerError() {
+	if cerr.IsServerError() {
 		rw.WriteHeader(http.StatusInternalServerError)
-		srv.dbErrors <- err
+		srv.dbErrors <- cerr
 		return
 	}
 
-	log.Println(err)
-	rw.WriteHeader(HttpStatusCodeOnError)
+	log.Println("Anomaly: " + cerr.Error())
+	rw.WriteHeader(http.StatusInternalServerError)
 }
 
 func (srv *Server) getContentDisposition(uid string) string {

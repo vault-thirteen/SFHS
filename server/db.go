@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/vault-thirteen/SFRODB/common"
+	ce "github.com/vault-thirteen/SFRODB/common/error"
 )
 
 func (srv *Server) reconnectDb() {
@@ -33,20 +33,14 @@ func (srv *Server) reconnectDb() {
 	}
 }
 
-func (srv *Server) getData(uid string) (data []byte, err error, de *common.Error) {
+func (srv *Server) getData(uid string) (data []byte, cerr *ce.CommonError) {
 	srv.dbClientLock.Lock()
 	defer srv.dbClientLock.Unlock()
 
-	data, err = srv.dbClient.ShowBinary(uid)
-	if err == nil {
-		return data, nil, nil
+	data, cerr = srv.dbClient.ShowBinary(uid)
+	if cerr == nil {
+		return data, nil
 	}
 
-	var ok bool
-	de, ok = err.(*common.Error)
-	if !ok {
-		return nil, err, nil
-	}
-
-	return nil, err, de
+	return nil, cerr
 }
