@@ -16,10 +16,6 @@ import (
 	cp "github.com/vault-thirteen/SFRODB/pool"
 )
 
-const (
-	DbClientPoolSize = 2
-)
-
 type Server struct {
 	settings  *ss.Settings
 	listenDsn string
@@ -83,7 +79,7 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		return nil, err
 	}
 
-	srv.poolOfClients, err = cp.NewClientPool(DbClientPoolSize, dbClientSettings)
+	srv.poolOfClients, err = cp.NewClientPool(srv.settings.DbClientPoolSize, dbClientSettings)
 	if err != nil {
 		return nil, err
 	}

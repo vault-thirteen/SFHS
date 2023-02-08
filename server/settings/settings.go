@@ -16,6 +16,7 @@ const (
 	ErrKeyFileIsNotSet       = "key file is not set"
 	ErrFileExtensionIsNotSet = "file exyension is not set"
 	ErrMimeTypeIsNotSet      = "MIME type is not set"
+	ErrDbClientPoolSize      = "DB client pool size is not set"
 )
 
 const (
@@ -44,6 +45,9 @@ type Settings struct {
 	DbPortA uint16
 	DbPortB uint16
 
+	// DbClientPoolSize is the size of a pool of DB clients.
+	DbClientPoolSize int
+
 	// File Extension & MIME Type.
 	// Extension which is appended to all files served.
 	FileExtension string
@@ -68,7 +72,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	}()
 
 	rdr := reader.NewReader(file)
-	var buf = make([][]byte, 9)
+	var buf = make([][]byte, 10)
 
 	for i := range buf {
 		buf[i], err = rdr.ReadLineEndingWithCRLF()
@@ -102,8 +106,13 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 		return stn, err
 	}
 
-	stn.FileExtension = strings.TrimSpace(string(buf[7]))
-	stn.MimeType = strings.TrimSpace(string(buf[8]))
+	stn.DbClientPoolSize, err = helper.ParseInt(strings.TrimSpace(string(buf[7])))
+	if err != nil {
+		return stn, err
+	}
+
+	stn.FileExtension = strings.TrimSpace(string(buf[8]))
+	stn.MimeType = strings.TrimSpace(string(buf[9]))
 
 	return stn, nil
 }
@@ -139,6 +148,10 @@ func (stn *Settings) Check() (err error) {
 
 	if stn.DbPortB == 0 {
 		return errors.New(ce.ErrClientPortIsNotSet)
+	}
+
+	if stn.DbClientPoolSize == 0 {
+		return errors.New(ErrDbClientPoolSize)
 	}
 
 	if len(stn.FileExtension) == 0 {

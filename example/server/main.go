@@ -38,7 +38,7 @@ func main() {
 	<-*serverMustBeStopped
 
 	log.Println("Stopping the server ...")
-	cerr = srv.Stop(true)
+	cerr = srv.Stop()
 	if cerr != nil {
 		log.Println(cerr)
 	}
