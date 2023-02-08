@@ -11,12 +11,13 @@ import (
 
 	ss "github.com/vault-thirteen/SFHS/server/settings"
 	"github.com/vault-thirteen/SFRODB/client"
-	cs "github.com/vault-thirteen/SFRODB/client/settings"
+	"github.com/vault-thirteen/SFRODB/client/settings"
 	ce "github.com/vault-thirteen/SFRODB/common/error"
+	cp "github.com/vault-thirteen/SFRODB/pool"
 )
 
 const (
-	DbClientId = "c"
+	DbClientPoolSize = 2
 )
 
 type Server struct {
@@ -29,8 +30,8 @@ type Server struct {
 	httpServer *http.Server
 
 	// DB client.
-	dbClient     *client.Client
-	dbClientLock *sync.Mutex
+	poolOfClients *cp.PoolOfClients
+	dbClientLock  *sync.Mutex
 
 	// Channel for an external controller. When a message comes from this
 	// channel, a controller must stop this server. The server does not stop
@@ -38,16 +39,11 @@ type Server struct {
 	mustBeStopped chan bool
 
 	// Internal control structures.
-	mustStop                   *atomic.Bool
-	subRoutines                *sync.WaitGroup
-	httpErrors                 chan error
-	dbErrors                   chan *ce.CommonError
-	dbReconnectionIsInProgress *atomic.Bool
+	subRoutines *sync.WaitGroup
+	mustStop    *atomic.Bool
+	httpErrors  chan error
+	dbErrors    chan *ce.CommonError
 }
-
-const (
-	DbClientRestartSleepTimeSec = 15
-)
 
 func NewServer(stn *ss.Settings) (srv *Server, err error) {
 	err = stn.Check()
@@ -62,7 +58,12 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		dbDsnB:        fmt.Sprintf("%s:%d", stn.DbHost, stn.DbPortB),
 		dbClientLock:  new(sync.Mutex),
 		mustBeStopped: make(chan bool, 2),
+		subRoutines:   new(sync.WaitGroup),
+		mustStop:      new(atomic.Bool),
+		httpErrors:    make(chan error, 8),
+		dbErrors:      make(chan *ce.CommonError, 8),
 	}
+	srv.mustStop.Store(false)
 
 	// HTTP Server.
 	srv.httpServer = &http.Server{
@@ -71,29 +72,21 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 	}
 
 	// DB Client.
-	var dbClientSettings *cs.Settings
-	dbClientSettings, err = cs.NewSettings(
+	var dbClientSettings *settings.Settings
+	dbClientSettings, err = settings.NewSettings(
 		srv.settings.DbHost,
 		srv.settings.DbPortA,
 		srv.settings.DbPortB,
-		cs.ResponseMessageLengthLimitDefault,
+		settings.ResponseMessageLengthLimitDefault,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.dbClient, err = client.NewClient(dbClientSettings, DbClientId)
+	srv.poolOfClients, err = cp.NewClientPool(DbClientPoolSize, dbClientSettings)
 	if err != nil {
 		return nil, err
 	}
-
-	srv.mustStop = new(atomic.Bool)
-	srv.mustStop.Store(false)
-	srv.subRoutines = new(sync.WaitGroup)
-	srv.httpErrors = make(chan error, 8)
-	srv.dbErrors = make(chan *ce.CommonError, 8)
-	srv.dbReconnectionIsInProgress = new(atomic.Bool)
-	srv.dbReconnectionIsInProgress.Store(false)
 
 	return srv, nil
 }
@@ -117,35 +110,30 @@ func (srv *Server) GetStopChannel() *chan bool {
 func (srv *Server) Start() (cerr *ce.CommonError) {
 	srv.startHttpServer()
 
-	cerr = srv.dbClient.Start()
+	cerr = srv.poolOfClients.Start()
 	if cerr != nil {
 		return cerr
 	}
 
+	srv.subRoutines.Add(2)
 	go srv.listenForHttpErrors()
 	go srv.listenForDbErrors()
 
 	return nil
 }
 
-func (srv *Server) Stop(forcibly bool) (cerr *ce.CommonError) {
+func (srv *Server) Stop() (cerr *ce.CommonError) {
 	srv.mustStop.Store(true)
 
+	var err error
 	ctx, cf := context.WithTimeout(context.Background(), time.Minute)
 	defer cf()
-	err := srv.httpServer.Shutdown(ctx)
+	err = srv.httpServer.Shutdown(ctx)
 	if err != nil {
-		return ce.NewServerError(err.Error(), 0, DbClientId)
+		return ce.NewClientError(err.Error(), 0, client.ClientIdNone)
 	}
 
-	if forcibly {
-		_ = srv.dbClient.Stop()
-	} else {
-		cerr = srv.dbClient.Stop()
-		if cerr != nil {
-			return cerr
-		}
-	}
+	srv.poolOfClients.Stop()
 
 	close(srv.httpErrors)
 	close(srv.dbErrors)
@@ -165,6 +153,8 @@ func (srv *Server) startHttpServer() {
 }
 
 func (srv *Server) listenForHttpErrors() {
+	defer srv.subRoutines.Done()
+
 	for err := range srv.httpErrors {
 		log.Println("Server error: " + err.Error())
 		srv.mustBeStopped <- true
@@ -174,14 +164,10 @@ func (srv *Server) listenForHttpErrors() {
 }
 
 func (srv *Server) listenForDbErrors() {
+	defer srv.subRoutines.Done()
+
 	for cerr := range srv.dbErrors {
 		log.Println("DB error: " + cerr.Error()) //TODO:Debug.
-
-		if !srv.dbReconnectionIsInProgress.Load() {
-			srv.dbReconnectionIsInProgress.Store(true)
-			srv.subRoutines.Add(1)
-			go srv.reconnectDb()
-		}
 	}
 
 	log.Println("DB error listener has stopped.")

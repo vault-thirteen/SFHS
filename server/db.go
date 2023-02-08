@@ -1,46 +1,69 @@
 package server
 
 import (
-	"log"
 	"time"
 
+	"github.com/vault-thirteen/SFRODB/client"
 	ce "github.com/vault-thirteen/SFRODB/common/error"
+	"github.com/vault-thirteen/errorz"
 )
 
-func (srv *Server) reconnectDb() {
-	defer srv.subRoutines.Done()
+const (
+	DbClientPoolTakeRetryDelayMs = 100
 
-	for {
-		if srv.mustStop.Load() {
-			log.Println("DB re-connection has been aborted.")
-			break
-		}
+	// DbClientPoolTakeAttemptsCountLimit is the limit for number of attempts
+	// to try to get a client from the pool.
+	// (100ms * 10) * 60 => 1 Minute.
+	DbClientPoolTakeAttemptsCountLimit = 10 * 60
+)
 
-		log.Println("Re-connecting to the DB ...")
-		err := srv.dbClient.Restart(true)
-		if err == nil {
-			log.Println("Connection to DB has been established.")
-			srv.dbReconnectionIsInProgress.Store(false)
-			break
-		}
-
-		for i := 1; i <= DbClientRestartSleepTimeSec; i++ {
-			if srv.mustStop.Load() {
-				break
-			}
-			time.Sleep(time.Second)
-		}
+func (srv *Server) takeClient() (cli *client.Client, err error) {
+	var attemptsCount = 1
+	cli, err = srv.poolOfClients.GiveIdleClient()
+	for (err != nil) && (attemptsCount <= DbClientPoolTakeAttemptsCountLimit) {
+		time.Sleep(time.Millisecond * DbClientPoolTakeRetryDelayMs)
+		attemptsCount++
+		cli, err = srv.poolOfClients.GiveIdleClient()
 	}
+
+	return cli, err
+}
+
+func (srv *Server) returnClient(cli *client.Client, clientError *ce.CommonError) (err error) {
+	var isClientBoken = (clientError != nil) && (clientError.IsServerError())
+	err = srv.poolOfClients.TakeIdleClient(cli.GetId(), isClientBoken)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (srv *Server) getData(uid string) (data []byte, cerr *ce.CommonError) {
 	srv.dbClientLock.Lock()
 	defer srv.dbClientLock.Unlock()
 
-	data, cerr = srv.dbClient.ShowBinary(uid)
-	if cerr == nil {
-		return data, nil
+	var cli *client.Client
+	var err error
+	cli, err = srv.takeClient()
+	if err != nil {
+		cerr = ce.NewClientError(err.Error(), 0, client.ClientIdNone)
+		return nil, cerr
 	}
 
-	return nil, cerr
+	defer func() {
+		err = srv.returnClient(cli, cerr)
+		if err != nil {
+			combinedError := errorz.Combine(cerr, err)
+			cerr = ce.NewClientError(combinedError.Error(), 0, cli.GetId())
+		}
+		return
+	}()
+
+	data, cerr = cli.ShowBinary(uid)
+	if cerr != nil {
+		return nil, cerr
+	}
+
+	return data, nil
 }
