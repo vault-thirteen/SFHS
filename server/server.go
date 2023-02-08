@@ -15,6 +15,10 @@ import (
 	ce "github.com/vault-thirteen/SFRODB/common/error"
 )
 
+const (
+	DbClientId = "c"
+)
+
 type Server struct {
 	settings  *ss.Settings
 	listenDsn string
@@ -78,7 +82,7 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		return nil, err
 	}
 
-	srv.dbClient, err = client.NewClient(dbClientSettings)
+	srv.dbClient, err = client.NewClient(dbClientSettings, DbClientId)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +135,7 @@ func (srv *Server) Stop(forcibly bool) (cerr *ce.CommonError) {
 	defer cf()
 	err := srv.httpServer.Shutdown(ctx)
 	if err != nil {
-		return ce.NewServerError(err.Error(), 0)
+		return ce.NewServerError(err.Error(), 0, DbClientId)
 	}
 
 	if forcibly {
