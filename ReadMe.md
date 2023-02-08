@@ -2,7 +2,8 @@
 ## Static Files HTTP Server
 
 An **HTTP** server for serving static files.  
-Static files are taken from the **SFRODB** database.
+Static files are taken from the **SFRODB** database.  
+The server serves files of only one file type (extension).
 
 ### HTTP Status Codes
 200 – Successful data retrieval.  
