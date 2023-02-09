@@ -28,6 +28,19 @@ func (srv *Server) respondWithData(
 	data []byte,
 ) {
 	rw.Header().Set(hdr.HttpHeaderContentType, srv.settings.MimeType)
+	rw.Header().Set(hdr.HttpHeaderServer, ServerName)
+
+	// 1.
+	// If a request doesn't have an Authorization header, or you are already
+	// using s-maxage or must-revalidate in the response, then you don't need
+	// to use public.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+	// 2.
+	// If there is a Cache-Control header with the max-age or s-maxage
+	// directive in the response, the Expires header is ignored.
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Expires
+	rw.Header().Set(hdr.HttpHeaderCacheControl, srv.httpHdrCacheControl)
+
 	//rw.Header().Set(hdr.HttpHeaderContentDisposition, srv.getContentDisposition(uid))
 	rw.WriteHeader(http.StatusOK)
 

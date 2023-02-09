@@ -16,6 +16,10 @@ import (
 	cp "github.com/vault-thirteen/SFRODB/pool"
 )
 
+const (
+	ServerName = "SFHS"
+)
+
 type Server struct {
 	settings  *ss.Settings
 	listenDsn string
@@ -39,6 +43,9 @@ type Server struct {
 	mustStop    *atomic.Bool
 	httpErrors  chan error
 	dbErrors    chan *ce.CommonError
+
+	// HTTP header values.
+	httpHdrCacheControl string
 }
 
 func NewServer(stn *ss.Settings) (srv *Server, err error) {
@@ -58,6 +65,9 @@ func NewServer(stn *ss.Settings) (srv *Server, err error) {
 		mustStop:      new(atomic.Bool),
 		httpErrors:    make(chan error, 8),
 		dbErrors:      make(chan *ce.CommonError, 8),
+
+		httpHdrCacheControl: fmt.Sprintf("max-age=%d, must-revalidate",
+			stn.HttpCacheControlMaxAge),
 	}
 	srv.mustStop.Store(false)
 

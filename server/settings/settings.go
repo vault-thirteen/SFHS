@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	ErrCertFileIsNotSet      = "certificate file is not set"
-	ErrKeyFileIsNotSet       = "key file is not set"
-	ErrFileExtensionIsNotSet = "file exyension is not set"
-	ErrMimeTypeIsNotSet      = "MIME type is not set"
-	ErrDbClientPoolSize      = "DB client pool size is not set"
+	ErrCertFileIsNotSet       = "certificate file is not set"
+	ErrKeyFileIsNotSet        = "key file is not set"
+	ErrFileExtensionIsNotSet  = "file exyension is not set"
+	ErrMimeTypeIsNotSet       = "MIME type is not set"
+	ErrDbClientPoolSize       = "DB client pool size is not set"
+	ErrHttpCacheControlMaxAge = "HTTP cache control max-age error"
 )
 
 const (
@@ -52,6 +53,11 @@ type Settings struct {
 	// Extension which is appended to all files served.
 	FileExtension string
 	MimeType      string
+
+	// HttpCacheControlMaxAge is time in seconds for which this server's
+	// response is fresh (valid). After this period clients will be refreshing
+	// the stale content by re-requesting it from the server.
+	HttpCacheControlMaxAge uint
 }
 
 func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
@@ -72,7 +78,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	}()
 
 	rdr := reader.NewReader(file)
-	var buf = make([][]byte, 10)
+	var buf = make([][]byte, 11)
 
 	for i := range buf {
 		buf[i], err = rdr.ReadLineEndingWithCRLF()
@@ -113,6 +119,11 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 
 	stn.FileExtension = strings.TrimSpace(string(buf[8]))
 	stn.MimeType = strings.TrimSpace(string(buf[9]))
+
+	stn.HttpCacheControlMaxAge, err = helper.ParseUint(strings.TrimSpace(string(buf[10])))
+	if err != nil {
+		return stn, err
+	}
 
 	return stn, nil
 }
@@ -160,6 +171,10 @@ func (stn *Settings) Check() (err error) {
 
 	if len(stn.MimeType) == 0 {
 		return errors.New(ErrMimeTypeIsNotSet)
+	}
+
+	if stn.HttpCacheControlMaxAge == 0 {
+		return errors.New(ErrHttpCacheControlMaxAge)
 	}
 
 	return nil
