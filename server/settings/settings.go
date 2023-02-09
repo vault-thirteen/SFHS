@@ -7,8 +7,8 @@ import (
 
 	ce "github.com/vault-thirteen/SFRODB/common/error"
 	"github.com/vault-thirteen/SFRODB/common/helper"
+	"github.com/vault-thirteen/auxie/reader"
 	"github.com/vault-thirteen/errorz"
-	"github.com/vault-thirteen/reader"
 )
 
 const (
