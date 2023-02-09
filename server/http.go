@@ -30,6 +30,11 @@ func (srv *Server) respondWithData(
 	rw.Header().Set(hdr.HttpHeaderContentType, srv.settings.MimeType)
 	rw.Header().Set(hdr.HttpHeaderServer, ServerName)
 
+	// CORS support.
+	if len(srv.settings.AllowedOriginForCORS) > 0 {
+		rw.Header().Set(hdr.HttpHeaderAccessControlAllowOrigin, srv.settings.AllowedOriginForCORS)
+	}
+
 	// 1.
 	// If a request doesn't have an Authorization header, or you are already
 	// using s-maxage or must-revalidate in the response, then you don't need

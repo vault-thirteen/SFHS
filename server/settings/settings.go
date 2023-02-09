@@ -58,6 +58,9 @@ type Settings struct {
 	// response is fresh (valid). After this period clients will be refreshing
 	// the stale content by re-requesting it from the server.
 	HttpCacheControlMaxAge uint
+
+	// Allowed Origin for cross-origin requests (CORS).
+	AllowedOriginForCORS string
 }
 
 func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
@@ -78,7 +81,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	}()
 
 	rdr := reader.NewReader(file)
-	var buf = make([][]byte, 11)
+	var buf = make([][]byte, 12)
 
 	for i := range buf {
 		buf[i], err = rdr.ReadLineEndingWithCRLF()
@@ -124,6 +127,8 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	if err != nil {
 		return stn, err
 	}
+
+	stn.AllowedOriginForCORS = strings.TrimSpace(string(buf[11]))
 
 	return stn, nil
 }
@@ -176,6 +181,8 @@ func (stn *Settings) Check() (err error) {
 	if stn.HttpCacheControlMaxAge == 0 {
 		return errors.New(ErrHttpCacheControlMaxAge)
 	}
+
+	// AllowedOriginForCORS is not checked as it may be empty.
 
 	return nil
 }

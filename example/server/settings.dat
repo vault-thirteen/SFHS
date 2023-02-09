@@ -6,6 +6,7 @@ localhost
 2020
 2021
 10
-.js
-text/javascript
+.json
+application/json
 300
+http://example.org
