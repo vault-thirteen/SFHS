@@ -1,5 +1,6 @@
 localhost
-443
+80
+http
 D:\Temp\SFHS-Test\cert\server-cert.pem
 D:\Temp\SFHS-Test\cert\server-key.pem
 localhost

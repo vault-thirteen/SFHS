@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	ErrServerModeIsNotSet     = "server mode is not set"
+	ErrServerMode             = "server mode error"
 	ErrCertFileIsNotSet       = "certificate file is not set"
 	ErrKeyFileIsNotSet        = "key file is not set"
 	ErrFileExtensionIsNotSet  = "file exyension is not set"
@@ -22,6 +24,8 @@ const (
 
 const (
 	ContentDispositionInline = "inline"
+	ServerModeHttpLc         = "http"
+	ServerModeHttpsLc        = "https"
 )
 
 // Settings is Server's settings.
@@ -34,6 +38,10 @@ type Settings struct {
 
 	// Server's Listen Port.
 	ServerPort uint16
+
+	// ServerMode is an HTTP mode selector.
+	// Possible values are: HTTP and HTTPS.
+	ServerMode string
 
 	// Server's Certificate and Key.
 	CertFile string
@@ -81,7 +89,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	}()
 
 	rdr := reader.NewReader(file)
-	var buf = make([][]byte, 12)
+	var buf = make([][]byte, 13)
 
 	for i := range buf {
 		buf[i], err = rdr.ReadLineEndingWithCRLF()
@@ -90,7 +98,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 		}
 	}
 
-	// Server Host & Port.
+	// Server Host, Port and Work Mode.
 	stn.ServerHost = strings.TrimSpace(string(buf[0]))
 
 	stn.ServerPort, err = helper.ParseUint16(strings.TrimSpace(string(buf[1])))
@@ -98,37 +106,40 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 		return stn, err
 	}
 
-	// Certificate and Key.
-	stn.CertFile = strings.TrimSpace(string(buf[2]))
-	stn.KeyFile = strings.TrimSpace(string(buf[3]))
+	stn.ServerMode = strings.TrimSpace(string(buf[2]))
+
+	// Certificate and Key for optional TLS.
+	stn.CertFile = strings.TrimSpace(string(buf[3]))
+	stn.KeyFile = strings.TrimSpace(string(buf[4]))
 
 	// Database.
-	stn.DbHost = strings.TrimSpace(string(buf[4]))
+	stn.DbHost = strings.TrimSpace(string(buf[5]))
 
-	stn.DbPortA, err = helper.ParseUint16(strings.TrimSpace(string(buf[5])))
+	stn.DbPortA, err = helper.ParseUint16(strings.TrimSpace(string(buf[6])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.DbPortB, err = helper.ParseUint16(strings.TrimSpace(string(buf[6])))
+	stn.DbPortB, err = helper.ParseUint16(strings.TrimSpace(string(buf[7])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.DbClientPoolSize, err = helper.ParseInt(strings.TrimSpace(string(buf[7])))
+	stn.DbClientPoolSize, err = helper.ParseInt(strings.TrimSpace(string(buf[8])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.FileExtension = strings.TrimSpace(string(buf[8]))
-	stn.MimeType = strings.TrimSpace(string(buf[9]))
+	// HTTP.
+	stn.FileExtension = strings.TrimSpace(string(buf[9]))
+	stn.MimeType = strings.TrimSpace(string(buf[10]))
 
-	stn.HttpCacheControlMaxAge, err = helper.ParseUint(strings.TrimSpace(string(buf[10])))
+	stn.HttpCacheControlMaxAge, err = helper.ParseUint(strings.TrimSpace(string(buf[11])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.AllowedOriginForCORS = strings.TrimSpace(string(buf[11]))
+	stn.AllowedOriginForCORS = strings.TrimSpace(string(buf[12]))
 
 	return stn, nil
 }
@@ -146,12 +157,27 @@ func (stn *Settings) Check() (err error) {
 		return errors.New(ce.ErrServerPortIsNotSet)
 	}
 
-	if len(stn.CertFile) == 0 {
-		return errors.New(ErrCertFileIsNotSet)
+	if len(stn.ServerMode) == 0 {
+		return errors.New(ErrServerModeIsNotSet)
+	} else {
+		if (strings.ToLower(stn.ServerMode) != ServerModeHttpLc) &&
+			(strings.ToLower(stn.ServerMode) != ServerModeHttpsLc) {
+			return errors.New(ErrServerMode)
+		}
 	}
 
-	if len(stn.KeyFile) == 0 {
-		return errors.New(ErrKeyFileIsNotSet)
+	switch stn.ServerMode {
+	case ServerModeHttpLc:
+		// Keys are not required.
+	case ServerModeHttpsLc:
+		if len(stn.CertFile) == 0 {
+			return errors.New(ErrCertFileIsNotSet)
+		}
+		if len(stn.KeyFile) == 0 {
+			return errors.New(ErrKeyFileIsNotSet)
+		}
+	default:
+		return errors.New(ErrServerMode)
 	}
 
 	if len(stn.DbHost) == 0 {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -151,7 +152,13 @@ func (srv *Server) Stop() (cerr *ce.CommonError) {
 
 func (srv *Server) startHttpServer() {
 	go func() {
-		listenError := srv.httpServer.ListenAndServeTLS(srv.settings.CertFile, srv.settings.KeyFile)
+		var listenError error
+		switch strings.ToLower(srv.settings.ServerMode) {
+		case ss.ServerModeHttpsLc:
+			listenError = srv.httpServer.ListenAndServeTLS(srv.settings.CertFile, srv.settings.KeyFile)
+		case ss.ServerModeHttpLc:
+			listenError = srv.httpServer.ListenAndServe()
+		}
 		if (listenError != nil) && (listenError != http.ErrServerClosed) {
 			srv.httpErrors <- listenError
 		}
