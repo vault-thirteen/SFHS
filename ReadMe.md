@@ -31,3 +31,10 @@ Example:
 
 ## Settings
 Format of the settings' file can be learned by studying the source code.
+
+## Performance
+
+Performance test of the combination of **SFHS** together with **SFRODB** made 
+in Apache JMeter may be found in the `test` folder. Quite a decent hardware 
+shows about 22 kRPS in HTTPS mode and about 23 kRPS in HTTP mode, while test 
+file size was about 1kB.
