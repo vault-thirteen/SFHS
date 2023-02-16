@@ -10,9 +10,13 @@ import (
 
 	"github.com/vault-thirteen/SFHS/server"
 	"github.com/vault-thirteen/SFHS/server/settings"
+	db "github.com/vault-thirteen/SFRODB/common"
 )
 
 func main() {
+	server.ShowIntroText(server.ProductServer)
+	server.ShowComponentInfoText(server.ComponentSFRODB, db.LibVersion)
+
 	cla, err := readCLA()
 	mustBeNoError(err)
 
