@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	ss "github.com/vault-thirteen/SFHS/server/settings"
+	ss "github.com/vault-thirteen/SFHS/pkg/server/settings"
 	"github.com/vault-thirteen/SFRODB/client"
 	"github.com/vault-thirteen/SFRODB/client/settings"
 	ce "github.com/vault-thirteen/SFRODB/common/error"

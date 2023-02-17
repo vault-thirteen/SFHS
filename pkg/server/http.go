@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	ss "github.com/vault-thirteen/SFHS/server/settings"
+	ss "github.com/vault-thirteen/SFHS/pkg/server/settings"
 	ce "github.com/vault-thirteen/SFRODB/common/error"
 	hdr "github.com/vault-thirteen/header"
 )

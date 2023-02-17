@@ -21,6 +21,9 @@ https://github.com/vault-thirteen/SFRODB
 ## Building
 Use the `build.bat` script included with the source code.
 
+## Installation
+`go install github.com/vault-thirteen/SFHS/cmd/server@latest`
+
 ## Startup Parameters
 
 ### Server

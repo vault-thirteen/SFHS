@@ -8,14 +8,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vault-thirteen/SFHS/server"
-	"github.com/vault-thirteen/SFHS/server/settings"
-	db "github.com/vault-thirteen/SFRODB/common"
+	"github.com/vault-thirteen/SFHS/pkg/server"
+	"github.com/vault-thirteen/SFHS/pkg/server/settings"
+	"github.com/vault-thirteen/Versioneer"
 )
 
 func main() {
-	server.ShowIntroText(server.ProductServer)
-	server.ShowComponentInfoText(server.ComponentSFRODB, db.LibVersion)
+	showIntro()
 
 	cla, err := readCLA()
 	mustBeNoError(err)
@@ -54,6 +53,14 @@ func mustBeNoError(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func showIntro() {
+	versioneer, err := ver.New()
+	mustBeNoError(err)
+	versioneer.ShowIntroText("Server")
+	versioneer.ShowComponentsInfoText()
+	fmt.Println()
 }
 
 func waitForQuitSignalFromOS(serverMustBeStopped *chan bool) {
