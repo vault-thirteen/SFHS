@@ -3,8 +3,8 @@ package server
 import (
 	"time"
 
-	"github.com/vault-thirteen/SFRODB/client"
-	ce "github.com/vault-thirteen/SFRODB/common/error"
+	"github.com/vault-thirteen/SFRODB/pkg/client"
+	ce "github.com/vault-thirteen/SFRODB/pkg/common/error"
 	"github.com/vault-thirteen/errorz"
 )
 

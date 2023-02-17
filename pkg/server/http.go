@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	ss "github.com/vault-thirteen/SFHS/pkg/server/settings"
-	ce "github.com/vault-thirteen/SFRODB/common/error"
+	ce "github.com/vault-thirteen/SFRODB/pkg/common/error"
 	hdr "github.com/vault-thirteen/header"
 )
 

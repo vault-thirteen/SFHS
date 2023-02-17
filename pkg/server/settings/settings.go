@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	ce "github.com/vault-thirteen/SFRODB/common/error"
-	"github.com/vault-thirteen/SFRODB/common/helper"
+	ce "github.com/vault-thirteen/SFRODB/pkg/common/error"
+	"github.com/vault-thirteen/SFRODB/pkg/common/helper"
 	"github.com/vault-thirteen/auxie/reader"
 	"github.com/vault-thirteen/errorz"
 )

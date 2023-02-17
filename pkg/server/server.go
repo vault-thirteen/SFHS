@@ -11,10 +11,10 @@ import (
 	"time"
 
 	ss "github.com/vault-thirteen/SFHS/pkg/server/settings"
-	"github.com/vault-thirteen/SFRODB/client"
-	"github.com/vault-thirteen/SFRODB/client/settings"
-	ce "github.com/vault-thirteen/SFRODB/common/error"
-	cp "github.com/vault-thirteen/SFRODB/pool"
+	"github.com/vault-thirteen/SFRODB/pkg/client"
+	"github.com/vault-thirteen/SFRODB/pkg/client/settings"
+	ce "github.com/vault-thirteen/SFRODB/pkg/common/error"
+	cp "github.com/vault-thirteen/SFRODB/pkg/pool"
 )
 
 const (
