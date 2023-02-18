@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,15 +21,15 @@ const (
 )
 
 type Server struct {
-	settings  *ss.Settings
-	listenDsn string
-	dbDsnA    string
-	dbDsnB    string
+	settings *ss.Settings
 
-	// HTTP server.
+	// HTTP(S) server.
+	listenDsn  string
 	httpServer *http.Server
 
-	// DB client.
+	// DB client(s).
+	dbDsnA        string
+	dbDsnB        string
 	poolOfClients *cp.PoolOfClients
 	dbClientLock  *sync.Mutex
 
@@ -102,6 +101,10 @@ func (srv *Server) GetListenDsn() (dsn string) {
 	return srv.listenDsn
 }
 
+func (srv *Server) GetWorkMode() (modeId byte) {
+	return srv.settings.ServerModeId
+}
+
 func (srv *Server) GetDbDsnA() (dsn string) {
 	return srv.dbDsnA
 }
@@ -153,11 +156,11 @@ func (srv *Server) Stop() (cerr *ce.CommonError) {
 func (srv *Server) startHttpServer() {
 	go func() {
 		var listenError error
-		switch strings.ToLower(srv.settings.ServerMode) {
-		case ss.ServerModeHttpsLc:
-			listenError = srv.httpServer.ListenAndServeTLS(srv.settings.CertFile, srv.settings.KeyFile)
-		case ss.ServerModeHttpLc:
+		switch srv.settings.ServerModeId {
+		case ss.ServerModeIdHttp:
 			listenError = srv.httpServer.ListenAndServe()
+		case ss.ServerModeIdHttps:
+			listenError = srv.httpServer.ListenAndServeTLS(srv.settings.CertFile, srv.settings.KeyFile)
 		}
 		if (listenError != nil) && (listenError != http.ErrServerClosed) {
 			srv.httpErrors <- listenError
@@ -180,7 +183,7 @@ func (srv *Server) listenForDbErrors() {
 	defer srv.subRoutines.Done()
 
 	for cerr := range srv.dbErrors {
-		log.Println("DB error: " + cerr.Error()) //TODO:Debug.
+		log.Println("DB error: " + cerr.Error())
 	}
 
 	log.Println("DB error listener has stopped.")

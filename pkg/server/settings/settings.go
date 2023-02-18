@@ -24,8 +24,11 @@ const (
 
 const (
 	ContentDispositionInline = "inline"
-	ServerModeHttpLc         = "http"
-	ServerModeHttpsLc        = "https"
+
+	ServerModeHttp    = "HTTP"
+	ServerModeIdHttp  = 1
+	ServerModeHttps   = "HTTPS"
+	ServerModeIdHttps = 2
 )
 
 // Settings is Server's settings.
@@ -41,7 +44,8 @@ type Settings struct {
 
 	// ServerMode is an HTTP mode selector.
 	// Possible values are: HTTP and HTTPS.
-	ServerMode string
+	ServerModeStr string
+	ServerModeId  byte
 
 	// Server's Certificate and Key.
 	CertFile string
@@ -98,7 +102,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 		}
 	}
 
-	// Server Host, Port and Work Mode.
+	// Server Host & Port.
 	stn.ServerHost = strings.TrimSpace(string(buf[0]))
 
 	stn.ServerPort, err = helper.ParseUint16(strings.TrimSpace(string(buf[1])))
@@ -106,7 +110,14 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 		return stn, err
 	}
 
-	stn.ServerMode = strings.TrimSpace(string(buf[2]))
+	// Server Work Mode.
+	stn.ServerModeStr = strings.ToUpper(strings.TrimSpace(string(buf[2])))
+	switch stn.ServerModeStr {
+	case ServerModeHttp:
+		stn.ServerModeId = ServerModeIdHttp
+	case ServerModeHttps:
+		stn.ServerModeId = ServerModeIdHttps
+	}
 
 	// Certificate and Key for optional TLS.
 	stn.CertFile = strings.TrimSpace(string(buf[3]))
@@ -157,19 +168,28 @@ func (stn *Settings) Check() (err error) {
 		return errors.New(ce.ErrServerPortIsNotSet)
 	}
 
-	if len(stn.ServerMode) == 0 {
+	if len(stn.ServerModeStr) == 0 {
 		return errors.New(ErrServerModeIsNotSet)
 	} else {
-		if (strings.ToLower(stn.ServerMode) != ServerModeHttpLc) &&
-			(strings.ToLower(stn.ServerMode) != ServerModeHttpsLc) {
+		if (stn.ServerModeStr != ServerModeHttp) &&
+			(stn.ServerModeStr != ServerModeHttps) {
 			return errors.New(ErrServerMode)
 		}
 	}
 
-	switch stn.ServerMode {
-	case ServerModeHttpLc:
+	if stn.ServerModeId == 0 {
+		return errors.New(ErrServerModeIsNotSet)
+	} else {
+		if (stn.ServerModeId != ServerModeIdHttp) &&
+			(stn.ServerModeId != ServerModeIdHttps) {
+			return errors.New(ErrServerMode)
+		}
+	}
+
+	switch stn.ServerModeStr {
+	case ServerModeHttp:
 		// Keys are not required.
-	case ServerModeHttpsLc:
+	case ServerModeHttps:
 		if len(stn.CertFile) == 0 {
 			return errors.New(ErrCertFileIsNotSet)
 		}

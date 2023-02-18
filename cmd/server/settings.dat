@@ -1,8 +1,8 @@
 localhost
 80
 http
-D:\Temp\SFHS-Test\cert\server-cert.pem
-D:\Temp\SFHS-Test\cert\server-key.pem
+X:\cert\server-cert.pem
+X:\cert\server-key.pem
 localhost
 2020
 2021

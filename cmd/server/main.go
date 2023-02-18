@@ -32,7 +32,12 @@ func main() {
 	if cerr != nil {
 		log.Fatal(cerr)
 	}
-	fmt.Println("HTTP Server: " + srv.GetListenDsn())
+	switch srv.GetWorkMode() {
+	case settings.ServerModeIdHttp:
+		fmt.Println("HTTP Server: " + srv.GetListenDsn())
+	case settings.ServerModeIdHttps:
+		fmt.Println("HTTPS Server: " + srv.GetListenDsn())
+	}
 	fmt.Println("DB Client A: " + srv.GetDbDsnA())
 	fmt.Println("DB Client B: " + srv.GetDbDsnB())
 
