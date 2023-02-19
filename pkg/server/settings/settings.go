@@ -16,7 +16,7 @@ const (
 	ErrServerMode             = "server mode error"
 	ErrCertFileIsNotSet       = "certificate file is not set"
 	ErrKeyFileIsNotSet        = "key file is not set"
-	ErrFileExtensionIsNotSet  = "file exyension is not set"
+	ErrFileExtensionIsNotSet  = "file extension is not set"
 	ErrMimeTypeIsNotSet       = "MIME type is not set"
 	ErrDbClientPoolSize       = "DB client pool size is not set"
 	ErrHttpCacheControlMaxAge = "HTTP cache control max-age error"
