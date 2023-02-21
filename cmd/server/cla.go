@@ -1,25 +1,31 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"strings"
 )
 
-const ErrConfigurationFileIsNotSpecified = "path to a configuration file is not specified"
+const ConfigurationFilePathDefault = "settings.txt"
 
 type CommandLineArguments struct {
 	ConfigurationFilePath string
 }
 
 func readCLA() (cla *CommandLineArguments, err error) {
+	cla = &CommandLineArguments{}
+
 	if len(os.Args) != 2 {
-		return nil, errors.New(ErrConfigurationFileIsNotSpecified)
+		cla.ConfigurationFilePath = ConfigurationFilePathDefault
+		return cla, nil
 	}
 
-	cla = &CommandLineArguments{
-		ConfigurationFilePath: strings.TrimSpace(os.Args[1]),
-	}
+	cla.ConfigurationFilePath = strings.TrimSpace(os.Args[1])
 
 	return cla, nil
+}
+
+// IsDefaultFile tells whether the default file path is used for the
+// configuration file.
+func (cla *CommandLineArguments) IsDefaultFile() (isDefaultFile bool) {
+	return cla.ConfigurationFilePath == ConfigurationFilePathDefault
 }

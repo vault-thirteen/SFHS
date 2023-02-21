@@ -27,13 +27,42 @@ Use the `build.bat` script included with the source code.
 ## Startup Parameters
 
 ### Server
-`server.exe <path-to-configuration-file>`
+`server.exe <path-to-configuration-file>`  
+`server.exe`  
 
 Example:  
-`server.exe "settings.dat"`
+`server.exe "settings.txt"`  
+`server.exe`  
+
+**Notes**:  
+If the path to a configuration file is omitted, the default one is used.  
+Default name of the configuration file is `settings.txt`.
 
 ## Settings
-Format of the settings' file can be learned by studying the source code.
+Format of the settings' file for a server is quite simple. It uses line
+breaks as a separator between parameters. Described below are meanings of each 
+line.
+
+1. Server's hostname.
+2. Server's listen port.
+3. Work mode: HTTP or HTTPS.
+4. Path to the certificate file for the HTTPS work mode.
+5. Path to the key file for the HTTPS work mode.
+6. Hostname of the SFRODB database.
+7. Main port of the SFRODB database.
+8. Auxiliary port of the SFRODB database.
+9. Size of the client pool for the SFRODB database.
+10. File extension of served files.
+11. MIME type of served files.
+12. TTL of served files, i.e. value of the `max-age` field of the 
+`Cache-Control` HTTP header.
+13. Allowed origin for HTTP CORS, i.e. value of the 
+`Access-Control-Allow-Origin` HTTP header.
+
+**Notes**:
+* File extension here is used as a normal extension with a dot (period) prefix, 
+because Go language uses such format for file extensions. This is not good, but 
+this is how Golang works.
 
 ## Performance
 
