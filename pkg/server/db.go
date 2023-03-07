@@ -60,7 +60,7 @@ func (srv *Server) getData(uid string) (data []byte, cerr *ce.CommonError) {
 		return
 	}()
 
-	data, cerr = cli.ShowBinary(uid)
+	data, cerr = cli.ShowData(uid)
 	if cerr != nil {
 		return nil, cerr
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	ce "github.com/vault-thirteen/SFRODB/pkg/common/error"
-	"github.com/vault-thirteen/SFRODB/pkg/common/helper"
+	"github.com/vault-thirteen/auxie/number"
 	"github.com/vault-thirteen/auxie/reader"
 	"github.com/vault-thirteen/errorz"
 )
@@ -105,7 +105,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	// Server Host & Port.
 	stn.ServerHost = strings.TrimSpace(string(buf[0]))
 
-	stn.ServerPort, err = helper.ParseUint16(strings.TrimSpace(string(buf[1])))
+	stn.ServerPort, err = number.ParseUint16(strings.TrimSpace(string(buf[1])))
 	if err != nil {
 		return stn, err
 	}
@@ -126,17 +126,17 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	// Database.
 	stn.DbHost = strings.TrimSpace(string(buf[5]))
 
-	stn.DbPortA, err = helper.ParseUint16(strings.TrimSpace(string(buf[6])))
+	stn.DbPortA, err = number.ParseUint16(strings.TrimSpace(string(buf[6])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.DbPortB, err = helper.ParseUint16(strings.TrimSpace(string(buf[7])))
+	stn.DbPortB, err = number.ParseUint16(strings.TrimSpace(string(buf[7])))
 	if err != nil {
 		return stn, err
 	}
 
-	stn.DbClientPoolSize, err = helper.ParseInt(strings.TrimSpace(string(buf[8])))
+	stn.DbClientPoolSize, err = number.ParseInt(strings.TrimSpace(string(buf[8])))
 	if err != nil {
 		return stn, err
 	}
@@ -145,7 +145,7 @@ func NewSettingsFromFile(filePath string) (stn *Settings, err error) {
 	stn.FileExtension = strings.TrimSpace(string(buf[9]))
 	stn.MimeType = strings.TrimSpace(string(buf[10]))
 
-	stn.HttpCacheControlMaxAge, err = helper.ParseUint(strings.TrimSpace(string(buf[11])))
+	stn.HttpCacheControlMaxAge, err = number.ParseUint(strings.TrimSpace(string(buf[11])))
 	if err != nil {
 		return stn, err
 	}
